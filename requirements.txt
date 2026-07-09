@@ -1,0 +1,8 @@
+aiohttp==3.9.1
+fastapi==0.127.0
+numpy==2.4.0
+pydantic==2.12.5
+sounddevice==0.5.3
+uvicorn==0.40.0
+uvicorn[standard]
+openai==1.107.1

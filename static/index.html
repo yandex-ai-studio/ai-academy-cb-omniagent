@@ -1,0 +1,846 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Чат-бот поддержки</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .chat-container {
+            width: 90%;
+            max-width: 600px;
+            height: 80vh;
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        .chat-header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 20px;
+            text-align: center;
+            font-size: 20px;
+            font-weight: bold;
+        }
+
+        .mode-selector {
+            display: flex;
+            background: #f5f5f5;
+            padding: 10px;
+            gap: 10px;
+        }
+
+        .mode-btn {
+            flex: 1;
+            padding: 10px;
+            border: none;
+            border-radius: 10px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 600;
+            transition: all 0.3s;
+            background: white;
+            color: #667eea;
+        }
+
+        .mode-btn.active {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+
+        .chat-messages {
+            flex: 1;
+            overflow-y: auto;
+            padding: 20px;
+            background: #f9f9f9;
+        }
+
+        .message {
+            margin-bottom: 15px;
+            display: flex;
+            animation: fadeIn 0.3s;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .message.user {
+            justify-content: flex-end;
+        }
+
+        .message-content {
+            max-width: 70%;
+            padding: 12px 16px;
+            border-radius: 18px;
+            word-wrap: break-word;
+        }
+
+        .message.bot .message-content {
+            background: #e3e3e3;
+            color: #333;
+            border-bottom-left-radius: 4px;
+        }
+
+        .message.user .message-content {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border-bottom-right-radius: 4px;
+        }
+
+        .chat-input-area {
+            padding: 20px;
+            background: white;
+            border-top: 1px solid #e0e0e0;
+        }
+
+        .text-input-container {
+            display: flex;
+            gap: 10px;
+        }
+
+        #messageInput {
+            flex: 1;
+            padding: 12px 16px;
+            border: 2px solid #e0e0e0;
+            border-radius: 25px;
+            font-size: 14px;
+            outline: none;
+            transition: border-color 0.3s;
+        }
+
+        #messageInput:focus {
+            border-color: #667eea;
+        }
+
+        .send-btn, .voice-btn {
+            width: 50px;
+            height: 50px;
+            border: none;
+            border-radius: 50%;
+            cursor: pointer;
+            font-size: 20px;
+            transition: all 0.3s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .send-btn {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+
+        .send-btn:hover {
+            transform: scale(1.1);
+        }
+
+        .send-btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .voice-controls {
+            display: none;
+            flex-direction: column;
+            align-items: center;
+            gap: 15px;
+        }
+
+        .voice-controls.active {
+            display: flex;
+        }
+
+        .voice-btn {
+            width: 80px;
+            height: 80px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            font-size: 32px;
+        }
+
+        .voice-btn.recording {
+            background: #e74c3c;
+            animation: pulse 1.5s infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.1); }
+        }
+
+        .voice-status {
+            font-size: 14px;
+            color: #666;
+            text-align: center;
+        }
+
+        .connection-status {
+            padding: 8px 16px;
+            background: #f0f0f0;
+            text-align: center;
+            font-size: 12px;
+            color: #666;
+        }
+
+        .connection-status.connected {
+            background: #d4edda;
+            color: #155724;
+        }
+
+        .connection-status.error {
+            background: #f8d7da;
+            color: #721c24;
+        }
+
+        .typing-indicator {
+            display: none;
+            padding: 10px;
+            margin-bottom: 10px;
+        }
+
+        .typing-indicator.active {
+            display: block;
+        }
+
+        .typing-dots {
+            display: inline-flex;
+            gap: 4px;
+        }
+
+        .typing-dots span {
+            width: 8px;
+            height: 8px;
+            background: #999;
+            border-radius: 50%;
+            animation: typing 1.4s infinite;
+        }
+
+        .typing-dots span:nth-child(2) {
+            animation-delay: 0.2s;
+        }
+
+        .typing-dots span:nth-child(3) {
+            animation-delay: 0.4s;
+        }
+
+        @keyframes typing {
+            0%, 60%, 100% { transform: translateY(0); }
+            30% { transform: translateY(-10px); }
+        }
+    </style>
+</head>
+<body>
+    <div class="chat-container">
+        <div class="chat-header">
+            🤖 Чат-бот поддержки
+        </div>
+        
+        <div class="mode-selector">
+            <button class="mode-btn active" data-mode="text">💬 Текстовый режим</button>
+            <button class="mode-btn" data-mode="voice">🎤 Голосовой режим</button>
+        </div>
+
+        <div class="connection-status" id="connectionStatus">
+            Подключение к серверу...
+        </div>
+
+        <div class="chat-messages" id="chatMessages">
+            <div class="message bot">
+                <div class="message-content">
+                    Здравствуйте! Я бот поддержки. Чем могу помочь?
+                </div>
+            </div>
+        </div>
+
+        <div class="typing-indicator" id="typingIndicator">
+            <div class="typing-dots">
+                <span></span>
+                <span></span>
+                <span></span>
+            </div>
+        </div>
+
+        <div class="chat-input-area">
+            <div class="text-input-container" id="textInputContainer">
+                <input 
+                    type="text" 
+                    id="messageInput" 
+                    placeholder="Введите сообщение..."
+                    autocomplete="off"
+                >
+                <button class="send-btn" id="sendBtn">📤</button>
+            </div>
+
+            <div class="voice-controls" id="voiceControls">
+                <button class="voice-btn" id="voiceBtn">🎤</button>
+                <div class="voice-status" id="voiceStatus">
+                    Нажмите на микрофон для начала записи
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+    
+
+class Base64Encoder {
+  #extra;
+  #extraLength;
+  constructor() {
+    this.#extra = new Uint8Array(3);
+    this.#extraLength = 0;
+  }
+
+  // Partly derived from https://github.com/lucacasonato/base64_streams/blob/main/src/iterator/encoder.ts
+  encode(chunk = Uint8Array.of(), options = {}) {
+    const stream = options.stream ?? false;
+
+    if (this.#extraLength > 0) {
+      const bytesNeeded = 3 - this.#extraLength;
+      const bytesAvailable = Math.min(bytesNeeded, chunk.length);
+      this.#extra.set(chunk.subarray(0, bytesAvailable), this.#extraLength);
+      chunk = chunk.subarray(bytesAvailable);
+      this.#extraLength += bytesAvailable;
+    }
+
+    if (!stream) {
+      // assert: this.#extraLength.length === 0 || this.#extraLength === 3 || chunk.length === 0
+      const prefix = this.#extra.subarray(0, this.#extraLength).toBase64();
+      this.#extraLength = 0;
+      return prefix + chunk.toBase64();
+    }
+
+    let extraReturn = "";
+
+    if (this.#extraLength === 3) {
+      extraReturn = this.#extra.toBase64();
+      this.#extraLength = 0;
+    }
+
+    const remainder = chunk.length % 3;
+    if (remainder > 0) {
+      this.#extra.set(chunk.subarray(chunk.length - remainder));
+      this.#extraLength = remainder;
+      chunk = chunk.subarray(0, chunk.length - remainder);
+    }
+
+    return extraReturn + chunk.toBase64();
+  }
+}
+
+        const encoder = new Base64Encoder();
+    
+        const audioConfig = {
+                        sampleRate: 44100,
+                        channelCount: 1,
+                        echoCancellation: true,
+                        autoGainControl: false,
+                        noiseSuppression: false,
+                        latency: 0,
+                    };        
+
+        // Dynamic URL generation functions
+        function getApiUrl() {
+            return `${window.location.protocol}//${window.location.host}`;
+        }
+
+        function getWebSocketUrl() {
+            const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+            return `${protocol}//${window.location.host}/ws`;
+        }
+        
+        let currentMode = 'text';
+        let websocket = null;
+        let isRecording = false;
+        let mediaRecorder = null;
+        let audioChunks = [];
+
+        // DOM elements
+        const chatMessages = document.getElementById('chatMessages');
+        const messageInput = document.getElementById('messageInput');
+        const sendBtn = document.getElementById('sendBtn');
+        const textInputContainer = document.getElementById('textInputContainer');
+        const voiceControls = document.getElementById('voiceControls');
+        const voiceBtn = document.getElementById('voiceBtn');
+        const voiceStatus = document.getElementById('voiceStatus');
+        const connectionStatus = document.getElementById('connectionStatus');
+        const typingIndicator = document.getElementById('typingIndicator');
+        const modeBtns = document.querySelectorAll('.mode-btn');
+
+        // Initialize
+        checkServerConnection();
+
+        // Mode switching
+        modeBtns.forEach(btn => {
+            btn.addEventListener('click', () => {
+                const mode = btn.dataset.mode;
+                switchMode(mode);
+            });
+        });
+
+        function switchMode(mode) {
+            currentMode = mode;
+            
+            modeBtns.forEach(btn => {
+                btn.classList.toggle('active', btn.dataset.mode === mode);
+            });
+
+            if (mode === 'text') {
+                textInputContainer.style.display = 'flex';
+                voiceControls.classList.remove('active');
+                // Stop recording if it's active
+                if (isRecording) {
+                    stopRecording();
+                }
+                if (websocket) {
+                    websocket.close();
+                    websocket = null;
+                }
+                // Stop audio playback and clear the buffer
+                stopAudioPlayback();
+            } else {
+                textInputContainer.style.display = 'none';
+                voiceControls.classList.add('active');
+                connectWebSocket();
+            }
+        }
+
+        // Check server connection
+        async function checkServerConnection() {
+            try {
+                const response = await fetch(`${getApiUrl()}/health`);
+                if (response.ok) {
+                    updateConnectionStatus('connected', 'Подключено к серверу');
+                } else {
+                    updateConnectionStatus('error', 'Ошибка подключения');
+                }
+            } catch (error) {
+                updateConnectionStatus('error', 'Сервер недоступен');
+            }
+        }
+
+        function updateConnectionStatus(status, message) {
+            connectionStatus.textContent = message;
+            connectionStatus.className = `connection-status ${status}`;
+        }
+
+        // Text mode functions
+        sendBtn.addEventListener('click', sendTextMessage);
+        messageInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') {
+                sendTextMessage();
+            }
+        });
+
+        async function sendTextMessage() {
+            const message = messageInput.value.trim();
+            if (!message) return;
+
+            addMessage(message, 'user');
+            messageInput.value = '';
+            sendBtn.disabled = true;
+
+            showTypingIndicator();
+
+            try {
+                const response = await fetch(`${getApiUrl()}/chat`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ message: message })
+                });
+
+                const data = await response.json();
+                hideTypingIndicator();
+                
+                if (data.response) {
+                    addMessage(data.response, 'bot');
+                } else {
+                    addMessage('Извините, произошла ошибка.', 'bot');
+                }
+            } catch (error) {
+                hideTypingIndicator();
+                addMessage('Ошибка соединения с сервером.', 'bot');
+                console.error('Error:', error);
+            } finally {
+                sendBtn.disabled = false;
+            }
+        }
+
+        // Voice mode functions
+        function connectWebSocket() {
+            if (websocket) return;
+
+            try {
+                websocket = new WebSocket(getWebSocketUrl());
+
+                websocket.onopen = () => {
+                    updateConnectionStatus('connected', 'WebSocket подключен');
+                    voiceStatus.textContent = 'Нажмите на микрофон для начала записи';
+                };
+
+                websocket.onmessage = async (event) => {
+                    const data = JSON.parse(event.data);
+                    console.log('Received message from websocket:', data);
+                    
+                    if (data.type === 'transcription') {
+                        addMessage(data.text, 'user');
+                    } else if (data.type === 'response') {
+                        addMessage(data.text, 'bot');
+                    } else if (data.type === 'audio') {
+                        // Handle audio streaming in real-time
+                        await handleAudioStream(data.data);
+                    } else if (data.type === 'error') {
+                        addMessage(`Ошибка: ${data.message}`, 'bot');
+                    } else if (data.type === 'user_speech_started') {
+                        // Interrupt audio playback when user starts speaking
+                        stopAudioPlayback();
+                        console.log('User speech detected - audio playback interrupted');
+                    }
+                };
+
+                websocket.onerror = (error) => {
+                    updateConnectionStatus('error', 'Ошибка WebSocket');
+                    console.error('WebSocket error:', error);
+                };
+
+                websocket.onclose = () => {
+                    updateConnectionStatus('error', 'WebSocket отключен');
+                    websocket = null;
+                    // Reset voice UI if we were in voice mode
+                    if (currentMode === 'voice') {
+                        isRecording = false;
+                        voiceBtn.classList.remove('recording');
+                        voiceStatus.textContent = 'Сессия завершена';
+                        // Stop audio playback and clear the buffer
+                        stopAudioPlayback();
+                    }
+                };
+            } catch (error) {
+                updateConnectionStatus('error', 'Не удалось подключиться');
+                console.error('WebSocket connection error:', error);
+            }
+        }
+
+        voiceBtn.addEventListener('click', toggleRecording);
+
+        async function toggleRecording() {
+            if (!isRecording) {
+                await startRecording();
+            } else {
+                stopRecording();
+            }
+        }
+
+        let websocketWorkletNode;
+
+
+        async function startRecording() {
+            try {
+                // Initialize audio context first
+                const audioContext = initAudioContext();
+                
+                // Resume audio context if suspended
+                if (audioContext.state === 'suspended') {
+                    await audioContext.resume();
+                }
+                
+                // Load the audio worklet module
+                await audioContext.audioWorklet.addModule('/static/worklet-processor.js');
+
+                // Create the audio worklet node
+                websocketWorkletNode = new AudioWorkletNode(audioContext, 'websocket-audio-processor');
+
+                // Get microphone stream
+                const stream = await navigator.mediaDevices.getUserMedia({
+                    audio: {
+                        sampleRate: audioConfig.sampleRate,
+                        channelCount: audioConfig.channelCount,
+                        echoCancellation: audioConfig.echoCancellation,
+                    }
+                });
+
+                // Connect microphone to worklet node
+                const mediaStreamSource = audioContext.createMediaStreamSource(stream);
+                mediaStreamSource.connect(websocketWorkletNode);
+                websocketWorkletNode.connect(audioContext.destination);
+
+                // Handle audio data from worklet
+                websocketWorkletNode.port.onmessage = async (event) => {
+                    await sendAudioData(event.data);
+                };
+
+                // Clear any remaining audio in the buffer
+                stopAudioPlayback();
+
+                isRecording = true;
+                voiceBtn.classList.add('recording');
+                voiceStatus.textContent = '🔴 Идет диалог... Нажмите еще раз для остановки';
+            } catch (error) {
+                console.error('Error starting recording:', error);
+                voiceStatus.textContent = 'Ошибка доступа к микрофону';
+            }
+        }
+        function stopRecording() {
+            if (websocketWorkletNode && isRecording) {
+                // Get the audio context and suspend it
+                const audioContext = initAudioContext();
+                audioContext.suspend().then(() => {
+                    websocketWorkletNode.port.close();
+                    websocketWorkletNode = null;
+                });
+
+                // Stop audio playback and clear the buffer
+                stopAudioPlayback();
+
+                isRecording = false;
+                voiceBtn.classList.remove('recording');
+                voiceStatus.textContent = 'Сессия завершена. Нажмите для новой записи';
+            }
+        }
+
+async function blobToBase64Async(blob) {
+    // Get the array buffer from the blob
+    const arrayBuffer = await blob.arrayBuffer();
+
+    // Create a Uint8Array view of the buffer
+    const bytes = new Uint8Array(arrayBuffer);
+
+    // Convert the bytes to a binary string
+    let binaryString = '';
+    for (let i = 0; i < bytes.byteLength; i++) {
+        binaryString += String.fromCharCode(bytes[i]);
+    }
+
+    // Use btoa() to encode the binary string to Base64
+    return btoa(binaryString);
+}
+
+function uint16ArrayToHexString(uint16Array) {
+  return Array.from(uint16Array, (value) =>
+    value.toString(16).padStart(4, '0') // Convert to hex and ensure 4 digits
+  ).join('');
+}
+
+function buf2hex(buffer) { // buffer is an ArrayBuffer
+  return [...new Uint8Array(buffer)]
+      .map(x => x.toString(16).padStart(2, '0'))
+      .join('');
+}
+
+        async function sendAudioData(audioChunkArray) {
+            if (!websocket || websocket.readyState !== WebSocket.OPEN) {
+                voiceStatus.textContent = 'Ошибка: WebSocket не подключен';
+                stopRecording();
+                return;
+            }
+
+            try {
+            
+                const audioBytes = new Uint8Array(audioChunkArray.buffer);
+                const base64 = encoder.encode(audioBytes);
+
+
+                websocket.send(JSON.stringify({
+                    type: 'audio',
+                    data: base64
+                }));
+                
+                voiceStatus.textContent = 'Аудио транслируется. Ожидание ответа...';
+            } catch (error) {
+                console.error('Error sending audio:', error);
+                voiceStatus.textContent = 'Ошибка отправки аудио';
+            }
+        }
+
+
+
+        // UI helper functions
+        function addMessage(text, sender) {
+            const messageDiv = document.createElement('div');
+            messageDiv.className = `message ${sender}`;
+            
+            const contentDiv = document.createElement('div');
+            contentDiv.className = 'message-content';
+            contentDiv.textContent = text;
+            
+            messageDiv.appendChild(contentDiv);
+            chatMessages.appendChild(messageDiv);
+            chatMessages.scrollTop = chatMessages.scrollHeight;
+        }
+
+        function showTypingIndicator() {
+            typingIndicator.classList.add('active');
+            chatMessages.scrollTop = chatMessages.scrollHeight;
+        }
+
+        function hideTypingIndicator() {
+            typingIndicator.classList.remove('active');
+        }
+        
+        // Audio playback functionality for real-time streaming
+        let audioContext = null;
+        let audioQueue = [];
+        let isPlaying = false;
+        let audioStartTime = 0;
+        let nextAudioTime = 0;
+        let currentAudioSource = null; // Track current playing source
+        
+        function initAudioContext() {
+            if (!audioContext) {
+                audioContext = new (window.AudioContext || window.webkitAudioContext)(
+                    {
+                        sampleRate: audioConfig.sampleRate
+                    }
+                );
+            }
+            return audioContext;
+        }
+        
+        // Initialize audio context on first user interaction
+        document.addEventListener('click', function initOnFirstClick() {
+            initAudioContext();
+            document.removeEventListener('click', initOnFirstClick);
+        }, { once: true });
+        
+        async function playAudioResponse(base64Audio) {
+            try {
+                // Initialize audio context on first use
+                const context = initAudioContext();
+
+                
+                // Resume audio context if suspended (required for autoplay policies)
+                if (context.state === 'suspended') {
+                    await context.resume();
+                }
+                
+                // Decode base64 audio data
+                const binary = atob(base64Audio);
+                const bytes = new Uint8Array(binary.length);
+                for (let i = 0; i < binary.length; i++) {
+                    bytes[i] = binary.charCodeAt(i);
+                }
+                
+                const int16Array = new Int16Array(bytes.buffer);
+
+                const float32Array = new Float32Array(int16Array.length);
+                for (let i = 0; i < int16Array.length; i++) {
+                    float32Array[i] = int16Array[i] / 0x8000; // Convert Int16 to Float32
+                }
+
+                
+                // Create AudioBuffer from Float32Array
+                const audioBuffer = context.createBuffer(1, float32Array.length, context.sampleRate);
+                const channelData = audioBuffer.getChannelData(0);
+                channelData.set(float32Array);
+                
+                // Add to queue for real-time playback
+                audioQueue.push(audioBuffer);
+
+                
+                // Start playing if not already playing
+                if (!isPlaying) {
+                    isPlaying = true;
+                    audioStartTime = context.currentTime;
+                    nextAudioTime = audioStartTime;
+                    playNextAudioChunk(context);
+                }
+                
+                // Update UI to show that audio is playing
+                if (currentMode === 'voice' && voiceStatus.textContent !== '🔊 Воспроизведение ответа...') {
+                    voiceStatus.textContent = '🔊 Воспроизведение ответа...';
+                }
+            } catch (error) {
+                console.error('Error playing audio response:', error);
+                if (currentMode === 'voice') {
+                    voiceStatus.textContent = 'Ошибка воспроизведения аудио';
+                }
+            }
+        }
+        
+        function playNextAudioChunk(context) {
+            if (audioQueue.length === 0) {
+                isPlaying = false;
+                currentAudioSource = null;
+                // Reset status when audio finishes playing
+                if (currentMode === 'voice') {
+                    voiceStatus.textContent = 'Нажмите на микрофон для начала записи';
+                }
+                return;
+            }
+            
+            const audioBuffer = audioQueue.shift();
+            
+            // Play audio chunk
+            const source = context.createBufferSource();
+            source.buffer = audioBuffer;
+            source.connect(context.destination);
+            source.start(nextAudioTime);
+            
+            // Track current source for interruption
+            currentAudioSource = source;
+            
+            // Schedule next chunk
+            nextAudioTime += audioBuffer.duration;
+            
+            // When this chunk finishes, play the next one
+            source.onended = () => {
+                playNextAudioChunk(context);
+            };
+        }
+        
+        // Function to stop audio playback immediately
+        function stopAudioPlayback() {
+            // Clear the audio queue
+            audioQueue = [];
+            
+            // Stop currently playing audio source
+            if (currentAudioSource) {
+                try {
+                    currentAudioSource.stop();
+                    currentAudioSource.disconnect();
+                } catch (e) {
+                    // Source might already be stopped
+                    console.log('Audio source already stopped');
+                }
+                currentAudioSource = null;
+            }
+            
+            // Reset playback state
+            isPlaying = false;
+            nextAudioTime = 0;
+            
+            // Update UI
+            if (currentMode === 'voice') {
+                voiceStatus.textContent = 'Слушаю...';
+            }
+        }
+        
+        // Handle audio streaming - new function for real-time chunks
+        async function handleAudioStream(base64AudioChunk) {
+            await playAudioResponse(base64AudioChunk);
+        }
+    </script>
+</body>
+</html>
