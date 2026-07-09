@@ -56,7 +56,7 @@
 - В консоли ВМ склонируйте проект.
 
 ```
-git clone https://github.com/yurlsk/omniagent-demo.git
+git clone https://github.com/yandex-ai-studio/ai-academy-cb-omniagent.git
 ```
 
 - Перейдите в папку **omniagent**:
