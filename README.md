@@ -61,7 +61,7 @@ git clone https://github.com/yandex-ai-studio/ai-academy-cb-omniagent.git
 
 - Перейдите в папку **omniagent**:
 
-  `cd omniagent-demo`
+  `cd ai-academy-cb-omniagent`
 
 - Создайте виртуальное окружение Python (опционально) и активируйте его, установите зависимости.
 
