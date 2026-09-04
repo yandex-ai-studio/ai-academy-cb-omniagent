@@ -12,6 +12,7 @@
 
 Поднимается бэкенд-приложение с единым интерфейсом к текстовой LLM и realtime-модели. На бэкенде размещается тестовая веб-страница для взаимодействия.
 
+> 🚀 **[Повторить с AI Studio →](https://aistudio.yandex.ru/platform?utm_source=github&utm_medium=owned&utm_campaign=t:info;gl:lgen&utm_content=cookbook_cb_omniagent)**
 
 # Архитектура решения
 
